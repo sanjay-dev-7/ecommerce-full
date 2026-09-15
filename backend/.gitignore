@@ -1,0 +1,16 @@
+# Dependency directories (never push to GitHub)
+node_modules/
+
+# Environment variables & secrets (protect your Razorpay & JWT keys)
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Operating system files
+.DS_Store
+Thumbs.db
