@@ -59,7 +59,7 @@ export default function CheckoutModal({
     <div className="overlay-backdrop" onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div style={styles.modalHeader}>
-          <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Checkout & Order Review</h2>
+          <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem' }}>Checkout & Order Review</h2>
           <button type="button" onClick={onClose} style={styles.closeBtn}>✕</button>
         </div>
 
