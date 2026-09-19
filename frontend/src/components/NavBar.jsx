@@ -18,7 +18,7 @@ export default function Navbar({
       <div style={styles.topBar}>
         <div style={styles.topBarInner}>
           <div style={styles.brand} onClick={() => onNavigate('shop')}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="m2 7 10-5 10 5-10 5z"/>
               <path d="m2 17 10 5 10-5"/>
               <path d="m2 12 10 5 10-5"/>
@@ -41,19 +41,19 @@ export default function Navbar({
             )}
 
             {/* Admin link: Only visible if user exists AND role is strictly 'admin' */}
-                {user && user.role?.toLowerCase() === 'admin' && (
-                <button
-                    type="button"
-                    onClick={() => onNavigate('admin')}
-                    style={{
-                    ...styles.topLink,
-                    color: currentView === 'admin' ? '#38bdf8' : '#e2e8f0',
-                    fontWeight: '600',
-                    }}
-                >
-                    Admin
-                </button>
-                )}
+            {user && user.role?.toLowerCase() === 'admin' && (
+              <button
+                type="button"
+                onClick={() => onNavigate('admin')}
+                style={{
+                  ...styles.topLink,
+                  color: currentView === 'admin' ? '#38bdf8' : '#e2e8f0',
+                  fontWeight: '600',
+                }}
+              >
+                Admin
+              </button>
+            )}
 
             {user ? (
               <div style={styles.userSection}>
@@ -78,7 +78,7 @@ export default function Navbar({
 
       {/* Tier 2: Category Filter Strip */}
       <div style={styles.subBar}>
-        <div style={styles.subBarInner}>
+        <div style={styles.subBarInner} className="subbar-scroll">
           <button
             type="button"
             onClick={() => {
@@ -119,61 +119,79 @@ export default function Navbar({
 const styles = {
   header: {
     width: '100%',
+    maxWidth: '100vw',
     position: 'sticky',
     top: 0,
     zIndex: 50,
+    boxSizing: 'border-box',
+    overflowX: 'clip',
   },
   topBar: {
     backgroundColor: '#121212',
     color: '#ffffff',
-    padding: '12px 0',
+    padding: '10px 0',
+    width: '100%',
+    boxSizing: 'border-box',
   },
   topBarInner: {
     maxWidth: '1200px',
     margin: '0 auto',
-    padding: '0 1.5rem',
+    padding: '0 12px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '8px',
+    boxSizing: 'border-box',
+    width: '100%',
   },
   brand: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '6px',
     cursor: 'pointer',
+    flexShrink: 0,
   },
   brandText: {
-    fontSize: '1.15rem',
+    fontSize: '1.05rem',
     fontWeight: '700',
     letterSpacing: '-0.02em',
   },
   topRightActions: {
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
+    gap: '10px',
+    marginLeft: 'auto',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
   },
   topLink: {
     background: 'none',
     border: 'none',
     color: '#e2e8f0',
     cursor: 'pointer',
-    fontSize: '0.85rem',
+    fontSize: '0.8rem',
     fontWeight: '500',
+    padding: '4px 6px',
   },
   userSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '6px',
   },
   userName: {
-    fontSize: '0.85rem',
+    fontSize: '0.8rem',
     color: '#94a3b8',
+    maxWidth: '80px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   authBtnSmall: {
     background: '#262626',
     border: 'none',
     color: '#f8fafc',
-    padding: '4px 10px',
+    padding: '3px 8px',
     borderRadius: '4px',
     fontSize: '0.75rem',
     cursor: 'pointer',
@@ -185,38 +203,47 @@ const styles = {
     background: '#262626',
     border: '1px solid #404040',
     color: '#ffffff',
-    padding: '6px 12px',
+    padding: '4px 10px',
     borderRadius: '6px',
     cursor: 'pointer',
-    fontSize: '0.85rem',
+    fontSize: '0.8rem',
+    flexShrink: 0,
   },
   cartBadge: {
     backgroundColor: '#f59e0b',
     color: '#000000',
-    fontSize: '0.75rem',
+    fontSize: '0.7rem',
     fontWeight: '700',
     borderRadius: '10px',
-    padding: '1px 6px',
+    padding: '1px 5px',
   },
   subBar: {
     backgroundColor: '#ffffff',
     borderBottom: '1px solid #e2e8f0',
+    width: '100%',
+    boxSizing: 'border-box',
+    overflowX: 'hidden',
   },
   subBarInner: {
     maxWidth: '1200px',
     margin: '0 auto',
-    padding: '0 1.5rem',
+    padding: '0 12px',
     display: 'flex',
-    gap: '20px',
+    gap: '14px',
     overflowX: 'auto',
     whiteSpace: 'nowrap',
+    boxSizing: 'border-box',
+    width: '100%',
+    WebkitOverflowScrolling: 'touch',
+    scrollbarWidth: 'none',
   },
   subLink: {
     background: 'none',
     border: 'none',
-    padding: '12px 4px',
+    padding: '10px 2px',
     cursor: 'pointer',
     color: '#0f172a',
-    fontSize: '0.85rem',
+    fontSize: '0.82rem',
+    flexShrink: 0,
   },
 };
