@@ -4,8 +4,8 @@ import { Toaster, toast } from 'react-hot-toast';
 import './App.css';
 
 // Components
-import Navbar from './components/Navbar';
-import ProductFilterBar from './components/ProductFilterBar';
+import Navbar from './components/NavBar';
+import ProductFilterBar from './components/productFilterBar';
 import ProductCard from './components/ProductCard';
 import CheckoutModal from './components/CheckoutModal';
 import AdminDashboard from './components/AdminDashboard';
