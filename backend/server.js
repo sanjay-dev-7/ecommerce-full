@@ -1,87 +1,87 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const cookieParser = require('cookie-parser');
-require('dotenv').config();
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import dotenv from 'dotenv';
 
-const webhookRoutes = require('./src/routes/webhookRoutes');
-const userRoutes = require('./src/routes/userRoutes');
+// Import your route handlers
+import authRoutes from './routes/authRoutes.js';
+import productRoutes from './routes/productRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+
+dotenv.config();
 
 const app = express();
 
-// Required by Render/Heroku/Railway to correctly detect HTTPS and forward cookies
+// Required if hosted behind reverse proxies like Render
 app.set('trust proxy', 1);
 
-// Allowed origins (Local dev + dynamic production frontend from env)
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  process.env.FRONTEND_URL, // e.g., https://storeblocks.vercel.app
-].filter(Boolean);
-
-// CORS configuration
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (e.g., mobile apps, curl, Razorpay server webhooks)
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error(`Blocked by CORS: ${origin}`));
-    },
-    credentials: true, // Required for cookies / withCredentials: true
-  })
-);
-
-// Body parser with raw body retention for Razorpay webhooks
-app.use(
-  express.json({
-    verify: (req, res, buf) => {
-      req.rawBody = buf;
-    },
-  })
-);
-
+// Middleware
+app.use(express.json());
 app.use(cookieParser());
 
-// Helmet with crossOriginResourcePolicy relaxed for CDN & external product images
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
-  })
-);
+// Dynamic CORS Configuration
+const allowedOrigins = [
+  'http://localhost:5173',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
 
-app.use(morgan('dev'));
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
 
-// API Routes
-app.use('/api/webhooks', webhookRoutes);
-app.use('/api/auth', require('./src/routes/authRoutes'));
-app.use('/api/users', userRoutes);
-app.use('/api/products', require('./src/routes/productRoutes'));
-app.use('/api/orders', require('./src/routes/orderRoutes'));
-app.use('/api/payments', require('./src/routes/paymentRoutes'));
+    // Allow matched URLs or any Vercel preview domain
+    const isAllowed =
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app');
 
-// Health check endpoint
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Blocked by CORS policy'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle all HTTP OPTIONS preflights
+
+// Health Check Route
 app.get('/health', (req, res) => {
   res.status(200).json({ success: true, message: 'Server is healthy and running.' });
 });
 
-// Database Connection & Server Startup
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err.message);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+  });
+});
+
+// MongoDB Connection & Listen
 const PORT = process.env.PORT || 5000;
+const MONGODB_URI = process.env.MONGODB_URI;
 
 mongoose
-  .connect(process.env.MONGODB_URI, {
-    family: 4, // Force IPv4
-  })
+  .connect(MONGODB_URI)
   .then(() => {
     console.log('✅ Successfully connected to MongoDB');
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
   })
-  .catch((error) => {
-    console.error('❌ MongoDB connection error:', error.message);
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err.message);
     process.exit(1);
   });
