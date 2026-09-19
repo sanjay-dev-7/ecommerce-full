@@ -12,6 +12,7 @@ import AdminDashboard from './components/AdminDashboard';
 import AuthModal from './components/AuthModal';
 import ConfirmModal from './components/ConfirmModal';
 import Footer from './components/Footer';
+axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL || 'https://storeblocks-api.onrender.com'
 
 axios.defaults.withCredentials = true;
 
