@@ -3,35 +3,50 @@ const User = require('../models/User');
 
 // Middleware to protect routes (Must be logged in)
 const protect = async (req, res, next) => {
-    let token = req.cookies.jwt; // Grab the token from the HTTP-Only cookie
+  let token;
 
-    if (token) {
-        try {
-            // Verify token using your secret key
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  // 1. Check Bearer token in the Authorization header (Cross-domain safe)
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+  // 2. Fallback to HTTP-only cookie if header is not present
+  else if (req.cookies && (req.cookies.jwt || req.cookies.token)) {
+    token = req.cookies.jwt || req.cookies.token;
+  }
 
-            // Fetch the user from the database (exclude the password)
-            // Attach the user object to the 'req' object so the controller can use it
-            req.user = await User.findById(decoded.id).select('-password');
+  if (token) {
+    try {
+      // Verify token using your secret key
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-            next(); // Security passed! Move to the next function
-        } catch (error) {
-            console.error(error);
-            res.status(401).json({ message: 'Not authorized, token failed or expired' });
-        }
-    } else {
-        res.status(401).json({ message: 'Not authorized, no token provided' });
+      // Support both decoded.userId and decoded.id
+      const userId = decoded.userId || decoded.id;
+      req.user = await User.findById(userId).select('-password');
+
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authorized, user not found' });
+      }
+
+      next(); // Security passed!
+    } catch (error) {
+      console.error('Token verification error:', error.message);
+      return res.status(401).json({ message: 'Not authorized, token failed or expired' });
     }
+  } else {
+    return res.status(401).json({ message: 'Not authorized, no token provided' });
+  }
 };
 
 // Middleware to protect Admin-only routes
 const admin = (req, res, next) => {
-    // protect() must run before admin() so req.user exists
-    if (req.user && req.user.role === 'admin') {
-        next(); // User is an admin, let them through
-    } else {
-        res.status(403).json({ message: 'Access denied: Admin privileges required' });
-    }
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Access denied: Admin privileges required' });
+  }
 };
 
 module.exports = { protect, admin };
