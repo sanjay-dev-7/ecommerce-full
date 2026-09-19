@@ -1,137 +1,113 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import AdminOrderManager from './AdminOrderManager';
+import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'products'
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'inventory'
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [stockInputs, setStockInputs] = useState({});
 
-  // State for creating a new product
-  const [showAddForm, setShowAddForm] = useState(false);
+  // New product form state
   const [newProduct, setNewProduct] = useState({
     name: '',
     price: '',
+    category: 'Clothing',
+    stock: '',
+    image: '',
     description: '',
-    countInStock: '',
-    category: 'Electronics',
-    image: 'https://via.placeholder.com/150',
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchAdminData = async () => {
     try {
-      const [ordersRes, productsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/orders/all', { withCredentials: true }),
-        axios.get('http://localhost:5000/api/products', { withCredentials: true })
+      setLoading(true);
+      const [orderRes, prodRes] = await Promise.all([
+        axios.get('/api/orders/all').catch(() => ({ data: [] })),
+        axios.get('/api/products').catch(() => ({ data: [] })),
       ]);
-      setOrders(ordersRes.data);
-      setProducts(productsRes.data);
+      setOrders(orderRes.data || []);
+      setProducts(prodRes.data || []);
     } catch (err) {
-      console.error('Failed to load admin metrics:', err);
+      console.error('Failed to load admin data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-const handleCreateProduct = async (e) => {
+  useEffect(() => {
+    fetchAdminData();
+  }, []);
+
+ const handleCreateProduct = async (e) => {
   e.preventDefault();
   try {
-    const qty = Number(newProduct.countInStock);
-    await axios.post(
-      '/api/products',
-      {
-        name: newProduct.name,
-        price: Number(newProduct.price),
-        description: newProduct.description,
-        category: newProduct.category,
-        image: newProduct.image || 'https://via.placeholder.com/150',
-        stock: qty,
-        countInStock: qty,
-      },
-      { withCredentials: true }
-    );
+    const imageUrl = newProduct.image.trim();
 
-    alert('✅ Product created successfully!');
+    await axios.post('/api/products', {
+      name: newProduct.name,
+      description: newProduct.description || 'Quality crafted utility product.',
+      category: newProduct.category,
+      price: Number(newProduct.price),
+      stock: Number(newProduct.stock),
+      // Schema expects images as an array:
+      images: imageUrl ? [imageUrl] : [],
+    });
+
+    toast('Product created successfully!');
     setNewProduct({
       name: '',
       price: '',
+      category: 'Clothing',
+      stock: '',
+      image: '',
       description: '',
-      countInStock: '',
-      category: 'Electronics',
-      image: 'https://via.placeholder.com/150',
     });
-    setShowAddForm(false);
-    fetchData();
+    fetchAdminData();
   } catch (err) {
-    console.error('Failed to create product:', err);
-    alert('Failed: ' + (err.response?.data?.message || err.message));
+    console.error('Error creating product:', err);
+    toast.error(err.response?.data?.message || 'Failed to create product');
   }
 };
 
-  const handleUpdateStock = async (productId) => {
-    const newStock = stockInputs[productId];
-    if (newStock === undefined || newStock === '') return;
-
-    try {
-      await axios.patch(
-        `http://localhost:5000/api/products/${productId}/stock`,
-        { countInStock: Number(newStock) },
-        { withCredentials: true }
-      );
-      alert('Stock updated successfully!');
-      fetchData();
-    } catch (err) {
-      alert('Failed to update stock: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
-  const handleDeleteProduct = async (productId) => {
+  const handleDeleteProduct = async (id) => {
     if (!window.confirm('Delete this product permanently?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/products/${productId}`, {
-        withCredentials: true
-      });
-      fetchData();
+      await axios.delete(`/api/products/${id}`);
+      setProducts((prev) => prev.filter((p) => (p._id || p.id) !== id));
     } catch (err) {
-      alert('Delete failed: ' + (err.response?.data?.message || err.message));
+      console.error('Error deleting product:', err);
+      toast.error('Failed to delete product.');
     }
   };
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '30px auto', padding: '0 20px', fontFamily: 'sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ margin: 0, fontSize: '26px' }}>Admin Dashboard</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
+    <div style={styles.container}>
+      <div style={styles.topBar}>
+        <div>
+          <h1 style={styles.heading}>Admin Control Center</h1>
+          <p style={styles.subheading}>Manage customer order statuses and product inventory</p>
+        </div>
+
+        <div style={styles.tabs}>
           <button
+            type="button"
             onClick={() => setActiveTab('orders')}
             style={{
-              padding: '8px 16px',
-              borderRadius: '6px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: '600',
-              backgroundColor: activeTab === 'orders' ? '#2563eb' : '#e2e8f0',
-              color: activeTab === 'orders' ? '#fff' : '#1e293b'
+              ...styles.tabBtn,
+              backgroundColor: activeTab === 'orders' ? '#0f172a' : '#f1f5f9',
+              color: activeTab === 'orders' ? '#ffffff' : '#475569',
             }}
           >
             Orders ({orders.length})
           </button>
           <button
-            onClick={() => setActiveTab('products')}
+            type="button"
+            onClick={() => setActiveTab('inventory')}
             style={{
-              padding: '8px 16px',
-              borderRadius: '6px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: '600',
-              backgroundColor: activeTab === 'products' ? '#2563eb' : '#e2e8f0',
-              color: activeTab === 'products' ? '#fff' : '#1e293b'
+              ...styles.tabBtn,
+              backgroundColor: activeTab === 'inventory' ? '#0f172a' : '#f1f5f9',
+              color: activeTab === 'inventory' ? '#ffffff' : '#475569',
             }}
           >
             Inventory ({products.length})
@@ -140,224 +116,237 @@ const handleCreateProduct = async (e) => {
       </div>
 
       {loading ? (
-        <p>Loading records...</p>
+        <p style={{ textAlign: 'center', color: '#64748b', padding: '40px' }}>Loading admin records...</p>
       ) : activeTab === 'orders' ? (
-        /* ORDERS LIST */
-        <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                <th style={{ padding: '12px' }}>Order ID</th>
-                <th style={{ padding: '12px' }}>Customer</th>
-                <th style={{ padding: '12px' }}>Items</th>
-                <th style={{ padding: '12px' }}>Amount</th>
-                <th style={{ padding: '12px' }}>Status</th>
-                <th style={{ padding: '12px' }}>Razorpay ID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((o) => (
-                <tr key={o._id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                  <td style={{ padding: '12px', fontFamily: 'monospace', fontSize: '13px' }}>
-                    {o._id.slice(-6)}
-                  </td>
-                  <td style={{ padding: '12px' }}>
-                    <div><strong>{o.user?.name || 'Customer'}</strong></div>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>{o.user?.email}</div>
-                  </td>
-                  <td style={{ padding: '12px', fontSize: '13px' }}>
-                    {o.orderItems?.map((it, idx) => (
-                      <div key={idx}>{it.name || 'Item'} × {it.quantity}</div>
-                    ))}
-                  </td>
-                  <td style={{ padding: '12px', fontWeight: 'bold' }}>₹{o.totalAmount}</td>
-                  <td style={{ padding: '12px' }}>
-                    <span
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        backgroundColor: o.orderStatus === 'Paid' ? '#dcfce7' : '#fef9c3',
-                        color: o.orderStatus === 'Paid' ? '#15803d' : '#a16207'
-                      }}
-                    >
-                      {o.orderStatus}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px', fontFamily: 'monospace', fontSize: '13px' }}>
-                    {o.razorpayPaymentId || o.paymentResult?.id || '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        /* ORDER STATUS MANAGEMENT VIEW */
+        <AdminOrderManager orders={orders} onOrdersUpdate={fetchAdminData} />
       ) : (
-        /* INVENTORY LIST & PRODUCT CREATION */
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-            <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: showAddForm ? '#64748b' : '#16a34a',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              {showAddForm ? '✕ Close Form' : '+ Add New Product'}
-            </button>
-          </div>
-
-          {showAddForm && (
-            <form
-              onSubmit={handleCreateProduct}
-              style={{
-                backgroundColor: '#f8fafc',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '1.5rem',
-                marginBottom: '20px',
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '12px'
-              }}
-            >
+        /* INVENTORY MANAGEMENT VIEW */
+        <div style={styles.inventoryGrid}>
+          {/* Add Product Form */}
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Add New Product</h3>
+            <form onSubmit={handleCreateProduct} style={styles.form}>
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '600' }}>Product Name</label>
+                <label style={styles.label}>Product Name</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Wireless Headphones"
                   value={newProduct.name}
                   onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                  style={styles.input}
                 />
+              </div>
+
+              <div style={styles.row}>
+                <div style={{ flex: 1 }}>
+                  <label style={styles.label}>Price (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    value={newProduct.price}
+                    onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={styles.label}>Stock Units</label>
+                  <input
+                    type="number"
+                    required
+                    value={newProduct.stock}
+                    onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+              </div>
+
+              <div style={styles.row}>
+                <div style={{ flex: 1 }}>
+                  <label style={styles.label}>Category</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Clothing, Electronics..."
+                    value={newProduct.category}
+                    onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={styles.label}>Image URL</label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={newProduct.image}
+                    onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '600' }}>Price (₹)</label>
-                <input
-                  type="number"
-                  required
-                  placeholder="e.g. 1999"
-                  value={newProduct.price}
-                  onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '600' }}>Initial Stock</label>
-                <input
-                  type="number"
-                  required
-                  placeholder="e.g. 10"
-                  value={newProduct.countInStock}
-                  onChange={(e) => setNewProduct({ ...newProduct, countInStock: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '600' }}>Category</label>
-                <input
-                  type="text"
-                  value={newProduct.category}
-                  onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '600' }}>Description</label>
+                <label style={styles.label}>Description</label>
                 <textarea
                   rows="2"
-                  placeholder="Short description of the item..."
                   value={newProduct.description}
                   onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                  style={{ ...styles.input, resize: 'none' }}
                 />
               </div>
 
-              <div style={{ gridColumn: 'span 2' }}>
-                <button
-                  type="submit"
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#2563eb',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Save Product
-                </button>
-              </div>
+              <button type="submit" style={styles.submitBtn}>Create Product</button>
             </form>
-          )}
+          </div>
 
-          <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={{ padding: '12px' }}>Product</th>
-                  <th style={{ padding: '12px' }}>Price</th>
-                  <th style={{ padding: '12px' }}>Current Stock</th>
-                  <th style={{ padding: '12px' }}>Update Stock</th>
-                  <th style={{ padding: '12px' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((p) => (
-                  <tr key={p._id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '12px' }}>
-                      <strong>{p.name}</strong>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>{p.category}</div>
-                    </td>
-                    <td style={{ padding: '12px' }}>₹{p.price}</td>
-                    <td style={{ padding: '12px' }}>
-                      <span style={{ fontWeight: 'bold', color: (p.countInStock ?? p.stock) <= 2 ? '#dc2626' : '#15803d' }}>
-                        {p.countInStock ?? p.stock ?? 0} units
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input
-                          type="number"
-                          placeholder={p.countInStock ?? p.stock ?? 0}
-                          style={{ width: '70px', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                          onChange={(e) => setStockInputs({ ...stockInputs, [p._id]: e.target.value })}
-                        />
-                        <button
-                          onClick={() => handleUpdateStock(p._id)}
-                          style={{ padding: '6px 12px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                        >
-                          Save
-                        </button>
+          {/* Current Stock List */}
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Current Inventory</h3>
+            <div style={styles.productList}>
+              {products.map((p) => {
+                const pId = p._id || p.id;
+                const stockCount = p.countInStock ?? p.stock ?? 0;
+                return (
+                  <div key={pId} style={styles.productRow}>
+                    <div>
+                      <div style={{ fontWeight: '600', fontSize: '13px' }}>{p.name}</div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>
+                        ₹{p.price} • {stockCount} in stock
                       </div>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <button
-                        onClick={() => handleDeleteProduct(p._id)}
-                        style={{ padding: '6px 12px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProduct(pId)}
+                      style={styles.deleteBtn}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 }
+
+const styles = {
+  container: {
+    maxWidth: '1100px',
+    margin: '0 auto',
+    padding: '24px 16px',
+  },
+  topBar: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '24px',
+    flexWrap: 'wrap',
+    gap: '16px',
+  },
+  heading: {
+    fontSize: '24px',
+    fontWeight: '800',
+    color: '#0f172a',
+    margin: 0,
+  },
+  subheading: {
+    fontSize: '13px',
+    color: '#64748b',
+    margin: '4px 0 0',
+  },
+  tabs: {
+    display: 'flex',
+    gap: '8px',
+  },
+  tabBtn: {
+    padding: '8px 18px',
+    borderRadius: '8px',
+    border: 'none',
+    fontWeight: '600',
+    fontSize: '13px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  inventoryGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+    gap: '24px',
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: '10px',
+    border: '1px solid #e2e8f0',
+    padding: '20px',
+  },
+  cardTitle: {
+    fontSize: '16px',
+    fontWeight: '700',
+    margin: '0 0 16px 0',
+    color: '#0f172a',
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  row: {
+    display: 'flex',
+    gap: '12px',
+  },
+  label: {
+    display: 'block',
+    fontSize: '11px',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    color: '#475569',
+    marginBottom: '4px',
+  },
+  input: {
+    width: '100%',
+    padding: '8px 10px',
+    borderRadius: '6px',
+    border: '1px solid #cbd5e1',
+    fontSize: '13px',
+    boxSizing: 'border-box',
+  },
+  submitBtn: {
+    padding: '10px',
+    backgroundColor: '#0284c7',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '6px',
+    fontWeight: '700',
+    fontSize: '13px',
+    cursor: 'pointer',
+    marginTop: '4px',
+  },
+  productList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    maxHeight: '440px',
+    overflowY: 'auto',
+  },
+  productRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 12px',
+    backgroundColor: '#f8fafc',
+    borderRadius: '6px',
+    border: '1px solid #f1f5f9',
+  },
+  deleteBtn: {
+    padding: '4px 10px',
+    backgroundColor: '#fee2e2',
+    color: '#b91c1c',
+    border: '1px solid #fecaca',
+    borderRadius: '6px',
+    fontSize: '11px',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+};

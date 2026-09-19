@@ -7,28 +7,52 @@ const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const webhookRoutes = require('./src/routes/webhookRoutes');
-const userRoutes = require('./src/routes/userRoutes'); // Points to src/routes
+const userRoutes = require('./src/routes/userRoutes');
 
 const app = express();
 
-// Middlewares
+// Required by Render/Heroku/Railway to correctly detect HTTPS and forward cookies
+app.set('trust proxy', 1);
+
+// Allowed origins (Local dev + dynamic production frontend from env)
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL, // e.g., https://storeblocks.vercel.app
+].filter(Boolean);
+
+// CORS configuration
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'http://localhost:5173'], // Allow Vite or CRA dev servers
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g., mobile apps, curl, Razorpay server webhooks)
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`Blocked by CORS: ${origin}`));
+    },
     credentials: true, // Required for cookies / withCredentials: true
   })
 );
 
+// Body parser with raw body retention for Razorpay webhooks
 app.use(
   express.json({
     verify: (req, res, buf) => {
-      req.rawBody = buf; // Preserved for Razorpay webhook verification
+      req.rawBody = buf;
     },
   })
 );
 
 app.use(cookieParser());
-app.use(helmet());
+
+// Helmet with crossOriginResourcePolicy relaxed for CDN & external product images
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+
 app.use(morgan('dev'));
 
 // API Routes
@@ -39,7 +63,7 @@ app.use('/api/products', require('./src/routes/productRoutes'));
 app.use('/api/orders', require('./src/routes/orderRoutes'));
 app.use('/api/payments', require('./src/routes/paymentRoutes'));
 
-// Health check
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ success: true, message: 'Server is healthy and running.' });
 });

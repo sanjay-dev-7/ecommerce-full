@@ -27,7 +27,7 @@ const protect = async (req, res, next) => {
 // Middleware to protect Admin-only routes
 const admin = (req, res, next) => {
     // protect() must run before admin() so req.user exists
-    if (req.user && req.user.role === 'Admin') {
+    if (req.user && req.user.role === 'admin') {
         next(); // User is an admin, let them through
     } else {
         res.status(403).json({ message: 'Access denied: Admin privileges required' });

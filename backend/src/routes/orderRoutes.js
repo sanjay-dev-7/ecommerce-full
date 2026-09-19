@@ -4,11 +4,13 @@ const {
   addOrderItems,
   getOrderById,
   getMyOrders,
-  getAllOrders
+  getAllOrders,
+  deleteOrder,
+  updateOrderStatus,
 } = require('../controllers/orderController');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
-// Specific routes first to prevent parameter collisions
+// Specific collection routes
 router.route('/')
   .post(protect, addOrderItems);
 
@@ -19,8 +21,12 @@ router.route('/myorders')
 router.route('/all')
   .get(protect, admin, getAllOrders);
 
-// Dynamic ID route goes last
+// Dynamic ID routes
 router.route('/:id')
-  .get(protect, getOrderById);
+  .get(protect, getOrderById)
+  .delete(protect, deleteOrder);
+
+router.route('/:id/status')
+  .put(protect, admin, updateOrderStatus);
 
 module.exports = router;
