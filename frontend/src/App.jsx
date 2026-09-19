@@ -12,13 +12,26 @@ import AdminDashboard from './components/AdminDashboard';
 import AuthModal from './components/AuthModal';
 import ConfirmModal from './components/ConfirmModal';
 import Footer from './components/Footer';
-axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL || 'https://storeblocks-api.onrender.com'
 
+// Backend Base URL and Credentials
+axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL || 'https://storeblocks-api.onrender.com';
 axios.defaults.withCredentials = true;
+
+// Axios Request Interceptor: Attach Authorization Bearer token as a reliable fallback
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('storeblocks_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => Promise.reject(error));
 
 export default function App() {
   const [view, setView] = useState('shop'); // 'shop', 'orders', 'admin'
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('storeblocks_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +78,7 @@ export default function App() {
       setOrders(orderRes.data || []);
       if (userRes.data) {
         setUser(userRes.data);
+        localStorage.setItem('storeblocks_user', JSON.stringify(userRes.data));
       }
 
       if (prodRes.data && prodRes.data.length > 0) {
@@ -85,16 +99,16 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      await axios.post('/api/auth/logout');
+      await axios.post('/api/auth/logout').catch(() => {});
+    } finally {
       setUser(null);
       setOrders([]);
       setCart([]);
       localStorage.removeItem('storeblocks_cart');
+      localStorage.removeItem('storeblocks_token');
+      localStorage.removeItem('storeblocks_user');
       setView('shop');
       toast.success('Logged out successfully');
-    } catch (err) {
-      console.error('Logout error:', err);
-      toast.error('Failed to log out');
     }
   };
 
@@ -551,8 +565,13 @@ export default function App() {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         onAuthSuccess={(u) => {
+          if (u.token) {
+            localStorage.setItem('storeblocks_token', u.token);
+          }
+          localStorage.setItem('storeblocks_user', JSON.stringify(u));
           setUser(u);
           setIsAuthOpen(false);
+          loadStoreData();
           toast.success(`Welcome back, ${u.name || 'Shopper'}!`);
         }}
       />
