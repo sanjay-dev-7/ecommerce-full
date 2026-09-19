@@ -4,16 +4,19 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 
-// Import your route handlers
-import authRoutes from './routes/authRoutes.js';
-import productRoutes from './routes/productRoutes.js';
-import orderRoutes from './routes/orderRoutes.js';
+// Import route handlers pointing inside ./src/routes/
+import authRoutes from './src/routes/authRoutes.js';
+import productRoutes from './src/routes/productRoutes.js';
+import orderRoutes from './src/routes/orderRoutes.js';
+import paymentRoutes from './src/routes/paymentRoutes.js';
+import userRoutes from './src/routes/userRoutes.js';
+import webhookRoutes from './src/routes/webhookRoutes.js';
 
 dotenv.config();
 
 const app = express();
 
-// Required if hosted behind reverse proxies like Render
+// Required behind reverse proxies like Render
 app.set('trust proxy', 1);
 
 // Middleware
@@ -48,7 +51,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Handle all HTTP OPTIONS preflights
+app.options('*', cors(corsOptions)); // Handle HTTP OPTIONS preflights
 
 // Health Check Route
 app.get('/health', (req, res) => {
@@ -59,6 +62,9 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
@@ -69,7 +75,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// MongoDB Connection & Listen
+// MongoDB Connection & Server Start
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
 

@@ -1,93 +1,99 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import cookieParser from 'cookie-parser';
-import dotenv from 'dotenv';
+const User = require('../models/User');
+const generateToken = require('../utils/generateToken');
 
-// Import route handlers pointing inside ./src/routes/
-import authRoutes from './src/routes/authRoutes.js';
-import productRoutes from './src/routes/productRoutes.js';
-import orderRoutes from './src/routes/orderRoutes.js';
-import paymentRoutes from './src/routes/paymentRoutes.js';
-import userRoutes from './src/routes/userRoutes.js';
-import webhookRoutes from './src/routes/webhookRoutes.js';
+// @desc    Register a new user
+// @route   POST /api/auth/register
+// @access  Public
+const registerUser = async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
 
-dotenv.config();
+        // Check if user already exists
+        const userExists = await User.findOne({ email });
+        if (userExists) {
+            return res.status(400).json({ message: 'User already exists' });
+        }
 
-const app = express();
+        // Create the user
+        const user = await User.create({
+            name,
+            email,
+            password,
+        });
 
-// Required behind reverse proxies like Render
-app.set('trust proxy', 1);
-
-// Middleware
-app.use(express.json());
-app.use(cookieParser());
-
-// Dynamic CORS Configuration
-const allowedOrigins = [
-  'http://localhost:5173',
-  process.env.FRONTEND_URL,
-].filter(Boolean);
-
-const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (curl, Postman, server-to-server)
-    if (!origin) return callback(null, true);
-
-    // Allow matched URLs or any Vercel preview domain
-    const isAllowed =
-      allowedOrigins.includes(origin) ||
-      origin.endsWith('.vercel.app');
-
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      callback(new Error('Blocked by CORS policy'));
+        if (user) {
+            generateToken(res, user._id);
+            res.status(201).json({
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+            });
+        } else {
+            res.status(400).json({ message: 'Invalid user data' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error', error: error.message });
     }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Handle HTTP OPTIONS preflights
+// @desc    Auth user & get token (Login)
+// @route   POST /api/auth/login
+// @access  Public
+const loginUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
 
-// Health Check Route
-app.get('/health', (req, res) => {
-  res.status(200).json({ success: true, message: 'Server is healthy and running.' });
-});
+        // Find user and explicitly select the password field (since we set select: false in the model)
+        const user = await User.findOne({ email }).select('+password');
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/webhooks', webhookRoutes);
+        if (user && (await user.matchPassword(password))) {
+            generateToken(res, user._id);
+            res.json({
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+            });
+        } else {
+            res.status(401).json({ message: 'Invalid email or password' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error', error: error.message });
+    }
+};
 
-// Global Error Handler
-app.use((err, req, res, next) => {
-  console.error('Server Error:', err.message);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Internal Server Error',
-  });
-});
-
-// MongoDB Connection & Server Start
-const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI;
-
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => {
-    console.log('✅ Successfully connected to MongoDB');
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+// @desc    Logout user / clear cookie
+// @route   POST /api/auth/logout
+// @access  Public
+const logoutUser = (req, res) => {
+    res.cookie('jwt', '', {
+        httpOnly: true,
+        expires: new Date(0), // Instantly expire the cookie
     });
-  })
-  .catch((err) => {
-    console.error('❌ MongoDB connection error:', err.message);
-    process.exit(1);
-  });
+    res.status(200).json({ message: 'Logged out successfully' });
+};
+
+module.exports = { registerUser, loginUser, logoutUser };
+
+// @desc    Get user profile
+// @route   GET /api/auth/profile
+// @access  Private (Requires Token)
+const getUserProfile = async (req, res) => {
+    // Thanks to the 'protect' middleware, req.user is already available here!
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+        });
+    } else {
+        res.status(404).json({ message: 'User not found' });
+    }
+};
+
+// Update your module.exports at the very bottom to include this new function
+module.exports = { registerUser, loginUser, logoutUser, getUserProfile };
