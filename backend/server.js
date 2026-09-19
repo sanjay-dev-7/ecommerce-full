@@ -1,16 +1,15 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import cookieParser from 'cookie-parser';
-import dotenv from 'dotenv';
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const dotenv = require('dotenv');
 
-// Import route handlers pointing inside ./src/routes/
-import authRoutes from './src/routes/authRoutes.js';
-import productRoutes from './src/routes/productRoutes.js';
-import orderRoutes from './src/routes/orderRoutes.js';
-import paymentRoutes from './src/routes/paymentRoutes.js';
-import userRoutes from './src/routes/userRoutes.js';
-import webhookRoutes from './src/routes/webhookRoutes.js';
+const authRoutes = require('./src/routes/authRoutes');
+const productRoutes = require('./src/routes/productRoutes');
+const orderRoutes = require('./src/routes/orderRoutes');
+const paymentRoutes = require('./src/routes/paymentRoutes');
+const userRoutes = require('./src/routes/userRoutes');
+const webhookRoutes = require('./src/routes/webhookRoutes');
 
 dotenv.config();
 
